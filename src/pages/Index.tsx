@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -141,6 +140,7 @@ const Index = () => {
               section={selectedSection}
               difficulty={difficulty}
               onQuestionGenerated={handleQuestionGenerated}
+              generatedQuestions={generatedQuestions}
             />
 
             {/* Generated Questions Display */}

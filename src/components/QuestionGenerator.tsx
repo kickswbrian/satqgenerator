@@ -1,24 +1,39 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Sparkles, RefreshCw } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Loader2, Sparkles, RefreshCw, Brain } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { analyzeQuestions, generateQuestionFromPattern, QuestionPattern } from '@/utils/questionAnalyzer';
 
 interface QuestionGeneratorProps {
   section: string;
   difficulty: string;
   onQuestionGenerated: (question: any) => void;
+  generatedQuestions: any[];
 }
 
-const QuestionGenerator = ({ section, difficulty, onQuestionGenerated }: QuestionGeneratorProps) => {
+const QuestionGenerator = ({ section, difficulty, onQuestionGenerated, generatedQuestions }: QuestionGeneratorProps) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [customTopic, setCustomTopic] = useState('');
   const [currentQuestion, setCurrentQuestion] = useState(null);
+  const [patterns, setPatterns] = useState<QuestionPattern[]>([]);
+  const [useAILearning, setUseAILearning] = useState(true);
   const { toast } = useToast();
+
+  // Analyze patterns when questions change
+  useEffect(() => {
+    if (generatedQuestions.length > 0) {
+      const userQuestions = generatedQuestions.filter(q => q.userGenerated || q.fromPattern);
+      if (userQuestions.length > 0) {
+        const analyzedPatterns = analyzeQuestions(userQuestions);
+        setPatterns(analyzedPatterns);
+      }
+    }
+  }, [generatedQuestions]);
 
   const questionTemplates = {
     math: {
@@ -157,22 +172,27 @@ const QuestionGenerator = ({ section, difficulty, onQuestionGenerated }: Questio
     await new Promise(resolve => setTimeout(resolve, 1500));
     
     try {
-      const templates = questionTemplates[section]?.[difficulty] || [];
-      if (templates.length === 0) {
-        throw new Error('No templates available for this combination');
+      let question;
+      
+      // Use AI learning if enabled and patterns exist
+      if (useAILearning && patterns.length > 0) {
+        const matchingPattern = patterns.find(p => p.section === section && p.difficulty === difficulty);
+        
+        if (matchingPattern) {
+          question = generateQuestionFromPattern(matchingPattern, customTopic);
+          
+          toast({
+            title: "AI Generated from Your Training!",
+            description: "This question was created using patterns learned from your input questions.",
+          });
+        } else {
+          // Fall back to templates if no matching pattern
+          question = generateFromTemplate();
+        }
+      } else {
+        // Use original template method
+        question = generateFromTemplate();
       }
-      
-      const randomTemplate = templates[Math.floor(Math.random() * templates.length)];
-      
-      const question = {
-        ...randomTemplate,
-        section,
-        difficulty,
-        id: Date.now(),
-        timestamp: new Date().toISOString(),
-        topic: customTopic || `${section} ${difficulty}`,
-        generated: true
-      };
       
       setCurrentQuestion(question);
       onQuestionGenerated(question);
@@ -188,9 +208,50 @@ const QuestionGenerator = ({ section, difficulty, onQuestionGenerated }: Questio
     }
   };
 
+  const generateFromTemplate = () => {
+    const questionTemplates = {
+      math: {
+        easy: [
+          {
+            question: "If x + 5 = 12, what is the value of x?",
+            options: [
+              { text: "5", isCorrect: false },
+              { text: "7", isCorrect: true },
+              { text: "17", isCorrect: false },
+              { text: "12", isCorrect: false }
+            ],
+            explanation: "To solve x + 5 = 12, subtract 5 from both sides: x = 12 - 5 = 7"
+          }
+        ],
+        // ... keep existing code (other template examples)
+      },
+      // ... keep existing code (reading and writing templates)
+    };
+
+    const templates = questionTemplates[section]?.[difficulty] || [];
+    if (templates.length === 0) {
+      throw new Error('No templates available for this combination');
+    }
+    
+    const randomTemplate = templates[Math.floor(Math.random() * templates.length)];
+    
+    return {
+      ...randomTemplate,
+      section,
+      difficulty,
+      id: Date.now(),
+      timestamp: new Date().toISOString(),
+      topic: customTopic || `${section} ${difficulty}`,
+      generated: true
+    };
+  };
+
   const regenerateQuestion = () => {
     generateQuestion();
   };
+
+  const matchingPattern = patterns.find(p => p.section === section && p.difficulty === difficulty);
+  const hasLearningData = matchingPattern && patterns.length > 0;
 
   return (
     <div className="space-y-6">
@@ -199,9 +260,28 @@ const QuestionGenerator = ({ section, difficulty, onQuestionGenerated }: Questio
           <CardTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-yellow-500" />
             AI Question Generator
+            {hasLearningData && (
+              <Badge variant="secondary" className="ml-2">
+                <Brain className="h-3 w-3 mr-1" />
+                Learning Enabled
+              </Badge>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {hasLearningData && (
+            <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="flex items-center gap-2 mb-2">
+                <Brain className="h-4 w-4 text-blue-600" />
+                <span className="text-sm font-medium text-blue-800">AI Learning Active</span>
+              </div>
+              <p className="text-xs text-blue-700">
+                The AI has learned from {generatedQuestions.filter(q => q.userGenerated).length} of your input questions 
+                and will generate new questions based on your patterns and style.
+              </p>
+            </div>
+          )}
+          
           <div>
             <Label htmlFor="topic">Custom Topic (Optional)</Label>
             <Input
@@ -211,6 +291,21 @@ const QuestionGenerator = ({ section, difficulty, onQuestionGenerated }: Questio
               onChange={(e) => setCustomTopic(e.target.value)}
             />
           </div>
+          
+          {hasLearningData && (
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="use-ai-learning"
+                checked={useAILearning}
+                onChange={(e) => setUseAILearning(e.target.checked)}
+                className="w-4 h-4"
+              />
+              <Label htmlFor="use-ai-learning" className="text-sm">
+                Use AI learning from my training data
+              </Label>
+            </div>
+          )}
           
           <Button 
             onClick={generateQuestion} 
@@ -226,7 +321,7 @@ const QuestionGenerator = ({ section, difficulty, onQuestionGenerated }: Questio
             ) : (
               <>
                 <Sparkles className="mr-2 h-4 w-4" />
-                Generate New Question
+                {hasLearningData && useAILearning ? 'Generate AI-Learned Question' : 'Generate New Question'}
               </>
             )}
           </Button>
@@ -234,10 +329,18 @@ const QuestionGenerator = ({ section, difficulty, onQuestionGenerated }: Questio
       </Card>
 
       {currentQuestion && (
-        <Card className="border-2 border-blue-200 bg-blue-50">
+        <Card className={`border-2 ${currentQuestion.fromPattern ? 'border-purple-200 bg-purple-50' : 'border-blue-200 bg-blue-50'}`}>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Generated Question</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                Generated Question
+                {currentQuestion.fromPattern && (
+                  <Badge variant="secondary">
+                    <Brain className="h-3 w-3 mr-1" />
+                    AI Learned
+                  </Badge>
+                )}
+              </CardTitle>
               <Button
                 variant="outline"
                 size="sm"
