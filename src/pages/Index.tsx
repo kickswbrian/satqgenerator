@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -10,12 +10,26 @@ import QuestionGenerator from '@/components/QuestionGenerator';
 import TrainingInterface from '@/components/TrainingInterface';
 import Analytics from '@/components/Analytics';
 import { useToast } from '@/hooks/use-toast';
+import { saveGeneratedQuestions, loadGeneratedQuestions } from '@/utils/storage';
 
 const Index = () => {
   const [selectedSection, setSelectedSection] = useState('math');
   const [difficulty, setDifficulty] = useState('medium');
   const [generatedQuestions, setGeneratedQuestions] = useState([]);
   const { toast } = useToast();
+
+  // Load saved questions on component mount
+  useEffect(() => {
+    const savedQuestions = loadGeneratedQuestions();
+    setGeneratedQuestions(savedQuestions);
+  }, []);
+
+  // Save questions whenever they change
+  useEffect(() => {
+    if (generatedQuestions.length > 0) {
+      saveGeneratedQuestions(generatedQuestions);
+    }
+  }, [generatedQuestions]);
 
   const sections = [
     { id: 'math', name: 'Math', icon: Calculator, color: 'bg-blue-500' },
@@ -24,7 +38,11 @@ const Index = () => {
   ];
 
   const handleQuestionGenerated = (question) => {
-    setGeneratedQuestions(prev => [question, ...prev]);
+    setGeneratedQuestions(prev => {
+      const updated = [question, ...prev];
+      saveGeneratedQuestions(updated);
+      return updated;
+    });
     toast({
       title: "Question Generated!",
       description: `New ${selectedSection} question created successfully.`,
@@ -32,7 +50,11 @@ const Index = () => {
   };
 
   const handleNewQuestionSet = (questions) => {
-    setGeneratedQuestions(prev => [...questions, ...prev]);
+    setGeneratedQuestions(prev => {
+      const updated = [...questions, ...prev];
+      saveGeneratedQuestions(updated);
+      return updated;
+    });
     toast({
       title: "Training Data Added!",
       description: `${questions.length} new question(s) added to training set.`,

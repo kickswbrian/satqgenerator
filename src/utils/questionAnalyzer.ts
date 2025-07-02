@@ -19,11 +19,16 @@ export const analyzeQuestions = (questions: any[]): QuestionPattern[] => {
   return Object.entries(sectionGroups).map(([key, groupQuestions]) => {
     const [section, difficulty] = key.split('-');
     
+    // Ensure groupQuestions is an array
+    const questionsArray = Array.isArray(groupQuestions) ? groupQuestions : [];
+    
     // Analyze question patterns
-    const questionTypes = extractQuestionTypes(groupQuestions);
-    const commonWords = extractCommonWords(groupQuestions);
-    const answerPatterns = extractAnswerPatterns(groupQuestions);
-    const avgQuestionLength = groupQuestions.reduce((sum, q) => sum + q.question.length, 0) / groupQuestions.length;
+    const questionTypes = extractQuestionTypes(questionsArray);
+    const commonWords = extractCommonWords(questionsArray);
+    const answerPatterns = extractAnswerPatterns(questionsArray);
+    const avgQuestionLength = questionsArray.length > 0 
+      ? questionsArray.reduce((sum, q) => sum + (q.question?.length || 0), 0) / questionsArray.length
+      : 0;
 
     return {
       section,
@@ -39,6 +44,7 @@ export const analyzeQuestions = (questions: any[]): QuestionPattern[] => {
 const extractQuestionTypes = (questions: any[]): string[] => {
   const types: string[] = [];
   questions.forEach(q => {
+    if (!q.question) return;
     const question = q.question.toLowerCase();
     if (question.includes('what is') || question.includes('calculate')) types.push('calculation');
     if (question.includes('solve') || question.includes('find')) types.push('solving');
@@ -52,6 +58,7 @@ const extractCommonWords = (questions: any[]): string[] => {
   const wordCount: Record<string, number> = {};
   
   questions.forEach(q => {
+    if (!q.question) return;
     const words = q.question.toLowerCase().match(/\b\w+\b/g) || [];
     words.forEach(word => {
       if (word.length > 3) { // Only count meaningful words
@@ -70,10 +77,10 @@ const extractCommonWords = (questions: any[]): string[] => {
 const extractAnswerPatterns = (questions: any[]): string[] => {
   const patterns: string[] = [];
   questions.forEach(q => {
-    if (q.options) {
-      const hasNumbers = q.options.some((opt: any) => /\d/.test(opt.text));
-      const hasFormulas = q.options.some((opt: any) => /[+\-*/=]/.test(opt.text));
-      const avgLength = q.options.reduce((sum: number, opt: any) => sum + opt.text.length, 0) / q.options.length;
+    if (q.options && Array.isArray(q.options)) {
+      const hasNumbers = q.options.some((opt: any) => opt.text && /\d/.test(opt.text));
+      const hasFormulas = q.options.some((opt: any) => opt.text && /[+\-*/=]/.test(opt.text));
+      const avgLength = q.options.reduce((sum: number, opt: any) => sum + (opt.text?.length || 0), 0) / q.options.length;
       
       if (hasNumbers) patterns.push('numerical');
       if (hasFormulas) patterns.push('mathematical');

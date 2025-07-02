@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ThumbsUp, ThumbsDown, Brain, Target, BookOpen, Plus, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { saveTrainingData, loadTrainingData } from '@/utils/storage';
 
 interface TrainingInterfaceProps {
   generatedQuestions: any[];
@@ -31,6 +32,17 @@ const TrainingInterface = ({ generatedQuestions, onNewQuestionSet }: TrainingInt
   const [showAddForm, setShowAddForm] = useState(false);
   
   const { toast } = useToast();
+
+  // Load training data on component mount
+  useEffect(() => {
+    const savedTrainingData = loadTrainingData();
+    setTrainingProgress(savedTrainingData.progress);
+  }, []);
+
+  // Save training data whenever progress changes
+  useEffect(() => {
+    saveTrainingData({ progress: trainingProgress, feedbackCount: 0 });
+  }, [trainingProgress]);
 
   const handleFeedback = (questionId: string, feedbackType: 'positive' | 'negative') => {
     setRating(feedbackType);
@@ -116,7 +128,7 @@ const TrainingInterface = ({ generatedQuestions, onNewQuestionSet }: TrainingInt
     
     toast({
       title: "Question Added!",
-      description: "Your question has been added to the training set.",
+      description: "Your question has been added to the training set and saved locally.",
     });
   };
 
