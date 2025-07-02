@@ -32,6 +32,14 @@ const Index = () => {
     });
   };
 
+  const handleNewQuestionSet = (questions) => {
+    setGeneratedQuestions(prev => [...questions, ...prev]);
+    toast({
+      title: "Training Data Added!",
+      description: `${questions.length} new question(s) added to training set.`,
+    });
+  };
+
   const exportQuestions = () => {
     const dataStr = JSON.stringify(generatedQuestions, null, 2);
     const dataBlob = new Blob([dataStr], { type: 'application/json' });
@@ -168,7 +176,10 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="train">
-            <TrainingInterface generatedQuestions={generatedQuestions} />
+            <TrainingInterface 
+              generatedQuestions={generatedQuestions}
+              onNewQuestionSet={handleNewQuestionSet}
+            />
           </TabsContent>
 
           <TabsContent value="analytics">

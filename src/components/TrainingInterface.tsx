@@ -1,23 +1,35 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { ThumbsUp, ThumbsDown, Brain, Target, BookOpen } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ThumbsUp, ThumbsDown, Brain, Target, BookOpen, Plus, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface TrainingInterfaceProps {
   generatedQuestions: any[];
+  onNewQuestionSet?: (questions: any[]) => void;
 }
 
-const TrainingInterface = ({ generatedQuestions }: TrainingInterfaceProps) => {
+const TrainingInterface = ({ generatedQuestions, onNewQuestionSet }: TrainingInterfaceProps) => {
   const [selectedQuestion, setSelectedQuestion] = useState(null);
   const [feedback, setFeedback] = useState('');
   const [rating, setRating] = useState(null);
   const [trainingProgress, setTrainingProgress] = useState(65);
+  
+  // New question set form
+  const [newQuestion, setNewQuestion] = useState('');
+  const [newOptions, setNewOptions] = useState(['', '', '', '']);
+  const [correctAnswer, setCorrectAnswer] = useState(0);
+  const [newSection, setNewSection] = useState('math');
+  const [newDifficulty, setNewDifficulty] = useState('medium');
+  const [newExplanation, setNewExplanation] = useState('');
+  const [showAddForm, setShowAddForm] = useState(false);
+  
   const { toast } = useToast();
 
   const handleFeedback = (questionId: string, feedbackType: 'positive' | 'negative') => {
@@ -58,6 +70,56 @@ const TrainingInterface = ({ generatedQuestions }: TrainingInterfaceProps) => {
     });
   };
 
+  const handleOptionChange = (index: number, value: string) => {
+    const updatedOptions = [...newOptions];
+    updatedOptions[index] = value;
+    setNewOptions(updatedOptions);
+  };
+
+  const addNewQuestion = () => {
+    if (!newQuestion.trim() || newOptions.some(opt => !opt.trim())) {
+      toast({
+        title: "Incomplete Question",
+        description: "Please fill in the question and all answer options.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const questionToAdd = {
+      question: newQuestion,
+      options: newOptions.map((text, index) => ({
+        text,
+        isCorrect: index === correctAnswer
+      })),
+      section: newSection,
+      difficulty: newDifficulty,
+      explanation: newExplanation,
+      id: Date.now(),
+      timestamp: new Date().toISOString(),
+      userGenerated: true
+    };
+
+    if (onNewQuestionSet) {
+      onNewQuestionSet([questionToAdd]);
+    }
+
+    // Reset form
+    setNewQuestion('');
+    setNewOptions(['', '', '', '']);
+    setCorrectAnswer(0);
+    setNewExplanation('');
+    setShowAddForm(false);
+    
+    // Update training progress
+    setTrainingProgress(prev => Math.min(100, prev + 5));
+    
+    toast({
+      title: "Question Added!",
+      description: "Your question has been added to the training set.",
+    });
+  };
+
   return (
     <div className="space-y-6">
       {/* Training Progress */}
@@ -94,6 +156,123 @@ const TrainingInterface = ({ generatedQuestions }: TrainingInterfaceProps) => {
               </div>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Add New Questions Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Plus className="h-5 w-5 text-blue-500" />
+            Train with New Questions
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!showAddForm ? (
+            <div className="text-center py-6">
+              <Upload className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Add Your Own Questions</h3>
+              <p className="text-gray-600 mb-4">
+                Help train the AI by adding your own SAT questions and answers
+              </p>
+              <Button onClick={() => setShowAddForm(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add New Question
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Section</Label>
+                  <Select value={newSection} onValueChange={setNewSection}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="math">Math</SelectItem>
+                      <SelectItem value="reading">Reading</SelectItem>
+                      <SelectItem value="writing">Writing</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Difficulty</Label>
+                  <Select value={newDifficulty} onValueChange={setNewDifficulty}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="easy">Easy</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="hard">Hard</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="new-question">Question</Label>
+                <Textarea
+                  id="new-question"
+                  placeholder="Enter your SAT question here..."
+                  value={newQuestion}
+                  onChange={(e) => setNewQuestion(e.target.value)}
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <Label>Answer Options</Label>
+                <div className="space-y-2">
+                  {newOptions.map((option, index) => (
+                    <div key={index} className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="correct-answer"
+                          checked={correctAnswer === index}
+                          onChange={() => setCorrectAnswer(index)}
+                          className="w-4 h-4"
+                        />
+                        <span className="font-medium">{String.fromCharCode(65 + index)}.</span>
+                      </div>
+                      <Input
+                        placeholder={`Option ${String.fromCharCode(65 + index)}`}
+                        value={option}
+                        onChange={(e) => handleOptionChange(index, e.target.value)}
+                        className="flex-1"
+                      />
+                    </div>
+                  ))}
+                </div>
+                <p className="text-sm text-gray-500 mt-2">
+                  Select the radio button next to the correct answer
+                </p>
+              </div>
+
+              <div>
+                <Label htmlFor="explanation">Explanation (Optional)</Label>
+                <Textarea
+                  id="explanation"
+                  placeholder="Explain why the correct answer is right..."
+                  value={newExplanation}
+                  onChange={(e) => setNewExplanation(e.target.value)}
+                  rows={2}
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <Button onClick={addNewQuestion} className="flex-1">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Question
+                </Button>
+                <Button variant="outline" onClick={() => setShowAddForm(false)}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
