@@ -11,6 +11,7 @@ import TrainingInterface from '@/components/TrainingInterface';
 import Analytics from '@/components/Analytics';
 import { useToast } from '@/hooks/use-toast';
 import { saveGeneratedQuestions, loadGeneratedQuestions } from '@/utils/storage';
+import StorageManager from '@/components/StorageManager';
 
 const Index = () => {
   const [selectedSection, setSelectedSection] = useState('math');
@@ -92,10 +93,11 @@ const Index = () => {
 
         {/* Main Content */}
         <Tabs defaultValue="generate" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 lg:w-[400px] mx-auto">
+          <TabsList className="grid w-full grid-cols-4 lg:w-[500px] mx-auto">
             <TabsTrigger value="generate">Generate</TabsTrigger>
             <TabsTrigger value="train">Train</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="storage">Storage</TabsTrigger>
           </TabsList>
 
           <TabsContent value="generate" className="space-y-6">
@@ -206,6 +208,10 @@ const Index = () => {
 
           <TabsContent value="analytics">
             <Analytics generatedQuestions={generatedQuestions} />
+          </TabsContent>
+
+          <TabsContent value="storage">
+            <StorageManager />
           </TabsContent>
         </Tabs>
       </div>
